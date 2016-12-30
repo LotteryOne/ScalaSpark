@@ -1,0 +1,56 @@
+<configuration>  
+  
+    <property>  
+        <name>dfs.namenode.http-address</name>  
+        <value>me:50070</value>  
+        <description> NameNode </description>  
+    </property>
+  
+    <property>  
+        <name>dfs.namenode.secondary.http-address</name>  
+        <value>me:50090</value>  
+        <description> SecondNameNode</description>  
+    </property> 
+  
+    <property>
+        <name>dfs.replication</name>
+        <value>3</value>
+        <description></description>
+    </property>
+  
+    <property>  
+        <name>dfs.namenode.name.dir</name>  
+        <value>file:///C:/SOFT/game/hadoop-2.6.5/hdfs/name</value>  
+        <description> namenode</description>  
+    </property>  
+  
+    <property>  
+        <name>dfs.datanode.data.dir</name>
+        <value>file:///C:/SOFT/game/hadoop-2.6.5/hdfs/data</value>  
+        <description> DataNode </description>  
+    </property>  
+  
+    <property>  
+        <name>dfs.namenode.checkpoint.dir</name>  
+        <value>file:///C:/SOFT/game/hadoop-2.6.5/hdfs/namesecondary</value>  
+        <description></description>  
+    </property> 
+  
+    <property>
+        <name>dfs.webhdfs.enabled</name>
+        <value>true</value>
+    </property>
+  
+    <property>
+        <name>dfs.stream-buffer-size</name>
+        <value>131072</value>
+        <description></description>
+    </property> 
+  
+    <property>  
+        <name>dfs.namenode.checkpoint.period</name>  
+        <value>3600</value>  
+        <description></description>  
+    </property> 
+  
+</configuration> 

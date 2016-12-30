@@ -1,0 +1,102 @@
+package util
+
+import org.apache.spark.Partition
+import scala.reflect.ClassTag
+import org.apache.spark.SparkContext
+import java.sql.Connection
+import java.sql.PreparedStatement
+import java.sql.ResultSet
+import org.apache.spark.rdd.RDD
+import org.apache.spark.Logging
+import org.apache.spark.TaskContext
+import org.apache.spark.util.NextIterator
+
+class OracleJdbcPartition(idx: Int, paramters: Map[String, Object]) extends Partition {
+  override def index = idx
+  val partitionParameters = paramters
+}
+
+class OracleJdbcRdd[T: ClassTag](
+  sc: SparkContext,
+  getConnection: () => Connection,
+  sql: String,
+  getOraclePartitions: () => Array[Partition],
+  prepareStatement: (PreparedStatement, OracleJdbcPartition) => PreparedStatement,
+  mapRow: (ResultSet) => T = OracleJdbcRdd.resultSetToObjectArray _)
+    extends RDD[T](sc, Nil) with Logging {
+  
+   override def getPartitions: Array[Partition] = {
+    getOraclePartitions();
+  }
+  
+   override def compute(thePart: Partition, context: TaskContext) = new NextIterator[T] {
+    context.addTaskCompletionListener{ context => closeIfNeeded() }
+    val part = thePart.asInstanceOf[OracleJdbcPartition]
+    val conn = getConnection()
+    val stmt = conn.prepareStatement(sql, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)
+
+
+    // setFetchSize(Integer.MIN_VALUE) is a MySQL driver specific way to force streaming results,
+    // rather than pulling entire resultset into memory.
+    // see http://dev.mysql.com/doc/refman/5.0/en/connector-j-reference-implementation-notes.html
+    try {
+   if (conn.getMetaData.getURL.matches("jdbc:mysql:.*")) {
+     stmt.setFetchSize(Integer.MIN_VALUE)
+     logInfo("statement fetch size set to: " + stmt.getFetchSize + " to force MySQL streaming ")
+   }
+    } catch {
+    case ex: Exception => {
+        //ex.printStackTrace();
+      }
+    }
+
+
+    prepareStatement(stmt, part)
+    
+    val rs = stmt.executeQuery()
+
+
+    override def getNext: T = {
+      if (rs.next()) {
+        mapRow(rs)
+      } else {
+        //finished = true
+        null.asInstanceOf[T]
+      }
+    }
+
+
+    override def close() {
+      try {
+        if (null != rs && ! rs.isClosed()) {
+          rs.close()
+        }
+      } catch {
+        case e: Exception => logWarning("Exception closing resultset", e)
+      }
+      try {
+        if (null != stmt && ! stmt.isClosed()) {
+          stmt.close()
+        }
+      } catch {
+        case e: Exception => logWarning("Exception closing statement", e)
+      }
+      try {
+        if (null != conn && ! conn.isClosed()) {
+          conn.close()
+        }
+        logInfo("closed connection")
+      } catch {
+        case e: Exception => logWarning("Exception closing connection", e)
+      }
+    }
+  }
+}
+
+object OracleJdbcRdd {
+  def resultSetToObjectArray(rs: ResultSet): Array[Object] = {
+    Array.tabulate[Object](rs.getMetaData.getColumnCount)(i => rs.getObject(i + 1))
+  }
+}
+
+ 
