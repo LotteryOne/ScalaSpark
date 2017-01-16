@@ -55,6 +55,7 @@ object GetData {
     bank_name: String,
     bank_card: String,
     keeper_name: String,//21
+//    sala:String,
     keeper_cetf_id: String) //22
 // keeper_phone: String,  //23
 //    id: String  24
